@@ -36,6 +36,8 @@ const (
 	TableHead
 	TableBody
 	TableRow
+	CSpan
+	CBlock
 )
 
 var nodeTypeNames = []string{
@@ -130,6 +132,8 @@ type Node struct {
 
 	content []byte // Markdown content of the block nodes
 	open    bool   // Specifies an open block node that has not been finished to process yet
+
+	cTag CTagNode
 }
 
 // NewNode allocates a node of a specified type.

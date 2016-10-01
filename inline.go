@@ -15,6 +15,7 @@ package blackthunder
 
 import (
 	"bytes"
+	"reflect"
 	"regexp"
 	"strconv"
 )
@@ -654,6 +655,119 @@ func leftAngle(p *parser, data []byte, offset int) (int, *Node) {
 	}
 
 	return end, nil
+}
+
+// '{' customized tags
+func leftBrace(p *parser, data []byte, offset int) (int, *Node) {
+	end, tag, result := parseCustomizedTag(p, data, offset)
+
+	if tag == nil {
+		node := NewNode(Text)
+		node.Literal = result.Content
+		return end, node
+	}
+
+	var node *Node
+	if tag.IsBlock {
+		node = NewNode(CBlock)
+		node.cTag = result
+	} else {
+		node = NewNode(CSpan)
+		node.cTag = result
+	}
+	return end, node
+}
+
+func parseCustomizedTag(p *parser, data []byte, offset int) (int, *CustomizedTag, CTagNode) {
+	data = data[offset:]
+
+	i := 1
+	for i < len(data) && isletter(data[i]) {
+		i++
+	}
+	name := string(data[1:i])
+	tag, ok := p.cTag[name]
+	if !ok {
+		return i, nil, CTagNode{Content: data[0:i]}
+	}
+
+	i++
+
+	attributes := map[string]string{}
+	arguments := make([]string, 0, 4)
+	for i < len(data) {
+		if isspace(data[i]) {
+			i++
+			continue
+		}
+		if data[i] == '}' {
+			break
+		}
+
+		var key, value string
+		key, value, i = tagAttribute(data, i)
+		if value == "" {
+			arguments = append(arguments, key)
+		} else {
+			attributes[key] = value
+		}
+		i++
+	}
+
+	if tag.HasChild {
+		i++
+		bgn := i
+		closeTag := make([]byte, 0, 16)
+		closeTag = append(closeTag, []byte{'{', '/'}...)
+		closeTag = append(closeTag, []byte(name)...)
+		closeTag = append(closeTag, '}')
+		closeTagLength := len(closeTag)
+
+		for i < len(data) && reflect.DeepEqual(data[i:i+closeTagLength], closeTag) {
+			i++
+		}
+		child := data[bgn:i]
+		result := tag.Parse(attributes, arguments, child)
+		return i + closeTagLength, &tag, result
+	} else {
+		result := tag.Parse(attributes, arguments, nil)
+		return i + 1, &tag, result
+	}
+}
+
+func tagAttribute(data []byte, offset int) (string, string, int) {
+	i := offset
+	var key string
+	if data[offset] == '"' {
+		i++
+		for i < len(data) && data[i] != '"' {
+			i++
+		}
+		key = string(data[offset+1 : i])
+		i++
+	} else {
+		for i < len(data) && (isletter(data[i]) || isalnum(data[i])) {
+			i++
+		}
+		key = string(data[offset:i])
+	}
+
+	bgn := i
+	if data[bgn] == '=' && data[bgn+1] == '"' {
+		i += 2
+		for i < len(data) && data[i] != '"' {
+			i++
+		}
+		return key, string(data[bgn+2 : i]), i + 1
+	} else if data[bgn] == '=' {
+		i += 1
+		for i < len(data) && (isletter(data[i]) || isalnum(data[i])) {
+			i++
+		}
+		return key, string(data[bgn+1 : i]), i
+	}
+
+	return key, "", i - 1
 }
 
 // '\\' backslash escape

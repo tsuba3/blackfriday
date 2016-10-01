@@ -63,6 +63,31 @@ var DefaultOptions = Options{
 	Extensions: CommonExtensions,
 }
 
+type CustomizedTag struct {
+	IsBlock    bool // Block will not be wrapped <p>
+	HasChild   bool // {tag} child {/tag}
+	ParseChild bool // Parse child
+	Async      bool // Run parse method async
+
+	// arguments
+	// - attributes map[string]string
+	// - arguments []string
+	// - child text or nil
+	Parse func(map[string]string, []string, []byte) CTagNode
+}
+
+type CTagNode struct {
+	Child map[string]CustomizedTag // Tags available in child
+	Value map[string]string        // Values available in child
+
+	// If ParseChild is true
+	Before []byte // before children
+	After  []byte //after children
+
+	// If ParseChild is false
+	Content []byte
+}
+
 // ListType contains bitwise or'ed flags for list and list item objects.
 type ListType int
 
@@ -185,6 +210,8 @@ type parser struct {
 	oldTip               *Node
 	lastMatchedContainer *Node // = doc
 	allClosed            bool
+
+	cTag map[string]CustomizedTag
 }
 
 func (p *parser) getRef(refid string) (ref *reference, found bool) {
@@ -325,6 +352,14 @@ func MarkdownCommon(input []byte) []byte {
 	return Markdown(input, renderer, DefaultOptions)
 }
 
+func MarkdownWithCustomizedTag(input []byte, cTag map[string]CustomizedTag) []byte {
+	renderer := NewHTMLRenderer(HTMLRendererParameters{
+		Flags:      CommonHTMLFlags,
+		Extensions: CommonExtensions,
+	})
+	return renderer.Render(Parse(input, DefaultOptions, cTag))
+}
+
 // Markdown is the main rendering function.
 // It parses and renders a block of markdown-encoded text.
 // The supplied Renderer is used to format the output, and extensions dictates
@@ -335,14 +370,14 @@ func Markdown(input []byte, renderer Renderer, options Options) []byte {
 	if renderer == nil {
 		return nil
 	}
-	return renderer.Render(Parse(input, options))
+	return renderer.Render(Parse(input, options, nil))
 }
 
 // Parse is an entry point to the parsing part of Blackfriday. It takes an
 // input markdown document and produces a syntax tree for its contents. This
 // tree can then be rendered with a default or custom renderer, or
 // analyzed/transformed by the caller to whatever non-standard needs they have.
-func Parse(input []byte, opts Options) *Node {
+func Parse(input []byte, opts Options, cTag map[string]CustomizedTag) *Node {
 	extensions := opts.Extensions
 
 	// fill in the render structure
@@ -375,6 +410,11 @@ func Parse(input []byte, opts Options) *Node {
 	p.inlineCallback['&'] = entity
 	p.inlineCallback['!'] = maybeImage
 	p.inlineCallback['^'] = maybeInlineFootnote
+
+	if cTag != nil {
+		p.cTag = cTag
+		p.inlineCallback['{'] = leftBrace
+	}
 
 	if extensions&Autolink != 0 {
 		p.inlineCallback['h'] = maybeAutoLink

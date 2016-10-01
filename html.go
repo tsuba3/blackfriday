@@ -709,6 +709,9 @@ func (r *HTMLRenderer) RenderNode(w io.Writer, node *Node, entering bool) WalkSt
 			r.out(w, tag("/tr", nil, false))
 			r.cr(w)
 		}
+	case CSpan:
+		r.out(w, node.cTag.Content)
+	case CBlock:
 	default:
 		panic("Unknown node type " + node.Type.String())
 	}
