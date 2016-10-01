@@ -1,5 +1,6 @@
-Blackfriday is distributed under the Simplified BSD License:
+Blackthunder is distributed under the Simplified BSD License:
 
+> Copyright © 2016 tsuba3
 > Copyright © 2011 Russ Ross
 > All rights reserved.
 >

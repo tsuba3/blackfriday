@@ -13,7 +13,7 @@
 //
 //
 
-package blackfriday
+package blackthunder
 
 import (
 	"bytes"

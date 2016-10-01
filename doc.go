@@ -15,4 +15,4 @@
 //
 // If you're interested in calling Blackfriday from command line, see
 // https://github.com/russross/blackfriday-tool.
-package blackfriday
+package blackthunder
