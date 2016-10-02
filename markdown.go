@@ -13,6 +13,7 @@ import (
 	"io"
 	"strings"
 	"unicode/utf8"
+	"errors"
 )
 
 //
@@ -86,6 +87,37 @@ type CTagNode struct {
 	// If ParseChild is false
 	Content []byte
 }
+
+type cTagStack struct {
+	tag   CustomizedTag
+	node  CTagNode
+	child map[string]CustomizedTag
+	value map[string]string
+}
+
+type stack struct {
+	s []*cTagStack
+}
+
+func newStack() *stack {
+	return &stack{make([]*cTagStack, 0), }
+}
+
+func (s *stack) Push(v *cTagStack) {
+	s.s = append(s.s, v)
+}
+
+func (s *stack) Pop() (*cTagStack, error) {
+	l := len(s.s)
+	if l == 0 {
+		return nil, errors.New("Empty Stack")
+	}
+
+	res := s.s[l - 1]
+	s.s = s.s[:l - 1]
+	return res, nil
+}
+
 
 // ListType contains bitwise or'ed flags for list and list item objects.
 type ListType int
@@ -210,7 +242,8 @@ type parser struct {
 	lastMatchedContainer *Node // = doc
 	allClosed            bool
 
-	cTag map[string]CustomizedTag
+	cTag      map[string]CustomizedTag
+	cTagStack *stack
 }
 
 func (p *parser) getRef(refid string) (ref *reference, found bool) {
@@ -413,6 +446,7 @@ func Parse(input []byte, opts Options, cTag map[string]CustomizedTag) *Node {
 	if cTag != nil {
 		p.cTag = cTag
 		p.inlineCallback['{'] = leftBrace
+		p.cTagStack = newStack()
 	}
 
 	if extensions&Autolink != 0 {

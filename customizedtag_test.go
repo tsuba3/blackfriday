@@ -59,4 +59,28 @@ Arguments:
 	}
 }
 
+func TestCTagInlineChild(t *testing.T) {
+	tag := map[string]CustomizedTag{}
+	tag["red"] = CustomizedTag{
+		HasChild: true,
+		Parse:func(attr map[string]string, args []string, child []byte) CTagNode {
+			return CTagNode{
+				Before: []byte(`<span style="color:red;">`),
+				After: []byte(`</span>`),
+			}
+		},
+	}
+
+	input := `
+{red}This is **Red**.{/red}
+`
+	output := `<p><span style="color:red;">This is <em>Red</em>.</span></p>
+`
+
+	result := string(MarkdownWithCustomizedTag([]byte(input), tag))
+	if result != output {
+		t.Log(result)
+		t.Fail()
+	}
+}
 

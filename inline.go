@@ -681,7 +681,7 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *CustomizedTag
 	data = data[offset:]
 
 	i := 1
-	for i < len(data) && isletter(data[i]) {
+	for i < len(data) && (isalnum(data[i]) || isletter(data[i])) {
 		i++
 	}
 	name := string(data[1:i])
