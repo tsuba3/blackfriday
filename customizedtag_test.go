@@ -3,7 +3,32 @@ package blackthunder
 import (
 	"testing"
 	"bytes"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
+
+func testCTag(t *testing.T, input string, expected string, cTag map[string]CustomizedTag) {
+	result := string(MarkdownWithCustomizedTag([]byte(input), cTag))
+	if result != expected {
+		diff := diffmatchpatch.New().DiffMain(result, expected, false)
+		var buff bytes.Buffer
+		for _, line := range diff {
+			switch line.Type {
+			case diffmatchpatch.DiffDelete:
+				buff.WriteString("+")
+				buff.WriteString(line.Text)
+				buff.WriteString("+")
+			case diffmatchpatch.DiffEqual:
+				buff.WriteString(line.Text)
+			case diffmatchpatch.DiffInsert:
+				buff.WriteString("-")
+				buff.WriteString(line.Text)
+				buff.WriteString("-")
+			}
+		}
+		t.Log(buff.String())
+		t.Fail()
+	}
+}
 
 func TestCTagInline(t *testing.T) {
 	tag := map[string]CustomizedTag{}
@@ -11,6 +36,7 @@ func TestCTagInline(t *testing.T) {
 		Parse:func(attr map[string]string, args []string, child []byte) CTagNode {
 			var buff bytes.Buffer
 			buff.WriteString("Attributes:\n")
+			//TODO キーを文字列の順に並び替える
 			for k, v := range attr {
 				buff.WriteString(k)
 				buff.WriteString(" : ")
@@ -52,17 +78,12 @@ Arguments:
 {inline key=value args/}</p>
 `
 
-	result := string(MarkdownWithCustomizedTag([]byte(input), tag))
-	if result != output {
-		t.Log(result)
-		t.Fail()
-	}
+	testCTag(t, input, output, tag)
 }
 
 func TestCTagInlineChild(t *testing.T) {
 	tag := map[string]CustomizedTag{}
 	tag["red"] = CustomizedTag{
-		HasChild: true,
 		Parse:func(attr map[string]string, args []string, child []byte) CTagNode {
 			return CTagNode{
 				Before: []byte(`<span style="color:red;">`),
@@ -77,10 +98,6 @@ func TestCTagInlineChild(t *testing.T) {
 	output := `<p><span style="color:red;">This is <em>Red</em>.</span></p>
 `
 
-	result := string(MarkdownWithCustomizedTag([]byte(input), tag))
-	if result != output {
-		t.Log(result)
-		t.Fail()
-	}
+	testCTag(t, input, output, tag)
 }
 
