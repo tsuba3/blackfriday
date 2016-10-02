@@ -15,7 +15,6 @@ package blackthunder
 
 import (
 	"bytes"
-	"reflect"
 	"regexp"
 	"strconv"
 )
@@ -695,12 +694,19 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *CustomizedTag
 
 	attributes := map[string]string{}
 	arguments := make([]string, 0, 4)
+	hasChild := false
 	for i < len(data) {
 		if isspace(data[i]) {
 			i++
 			continue
 		}
 		if data[i] == '}' {
+			i += 1
+			hasChild = true
+			break
+		}
+		if data[i] == '/' && data[i+1] == '}' {
+			i += 2
 			break
 		}
 
@@ -714,24 +720,14 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *CustomizedTag
 		i++
 	}
 
-	if tag.HasChild {
-		i++
-		bgn := i
-		closeTag := make([]byte, 0, 16)
-		closeTag = append(closeTag, []byte{'{', '/'}...)
-		closeTag = append(closeTag, []byte(name)...)
-		closeTag = append(closeTag, '}')
-		closeTagLength := len(closeTag)
+	// i points after '}'
 
-		for i < len(data) && reflect.DeepEqual(data[i:i+closeTagLength], closeTag) {
-			i++
-		}
-		child := data[bgn:i]
-		result := tag.Parse(attributes, arguments, child)
-		return i + closeTagLength, &tag, result
+	if hasChild {
+		// TODO
+		panic("Not implemented yet.")
 	} else {
 		result := tag.Parse(attributes, arguments, nil)
-		return i + 1, &tag, result
+		return i, &tag, result
 	}
 }
 

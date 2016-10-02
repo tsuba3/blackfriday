@@ -30,10 +30,10 @@ func TestCTagInline(t *testing.T) {
 	}
 
 	input := `
-{inline a=a 0 b=b name="Tanaka Satoshi" 1}
-{inline " A B C"}
-{inline}
-\{inline key=value args}`
+{inline a=a 0 b=b name="Tanaka Satoshi" 1/}
+{inline " A B C"/}
+{inline /}
+\{inline key=value args/}`
 	output := `<p>Attributes:
 a : a
 b : b
@@ -48,8 +48,8 @@ Arguments:
 
 Attributes:
 Arguments:
-{inline key=value args}
-</p>
+
+{inline key=value args/}</p>
 `
 
 	result := string(MarkdownWithCustomizedTag([]byte(input), tag))
