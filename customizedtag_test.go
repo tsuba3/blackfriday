@@ -3,6 +3,7 @@ package blackthunder
 import (
 	"testing"
 	"bytes"
+	"sort"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -30,17 +31,26 @@ func testCTag(t *testing.T, input string, expected string, cTag map[string]Custo
 	}
 }
 
+func sortMap(m map[string]string) []string {
+	var keys []string
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 func TestCTagInline(t *testing.T) {
 	tag := map[string]CustomizedTag{}
 	tag["inline"] = CustomizedTag{
 		Parse:func(attr map[string]string, args []string, child []byte) CTagNode {
 			var buff bytes.Buffer
 			buff.WriteString("Attributes:\n")
-			//TODO キーを文字列の順に並び替える
-			for k, v := range attr {
+			keys := sortMap(attr)
+			for _, k := range keys {
 				buff.WriteString(k)
 				buff.WriteString(" : ")
-				buff.WriteString(v)
+				buff.WriteString(attr[k])
 				buff.WriteString("\n")
 			}
 			buff.WriteString("Arguments:\n")
