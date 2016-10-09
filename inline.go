@@ -681,7 +681,7 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *CustomizedTag
 	data = data[offset:]
 
 	i := 1
-	for i < len(data) && (isalnum(data[i]) || isletter(data[i])) {
+	for i < len(data) && isalnum(data[i]) {
 		i++
 	}
 	name := string(data[1:i])
@@ -689,8 +689,6 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *CustomizedTag
 	if !ok {
 		return i, nil, CTagNode{Content: data[0:i]}
 	}
-
-	i++
 
 	attributes := map[string]string{}
 	arguments := make([]string, 0, 4)
@@ -717,7 +715,7 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *CustomizedTag
 		} else {
 			attributes[key] = value
 		}
-		i++
+		//i++
 	}
 
 	// i points after '}'
@@ -734,15 +732,17 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *CustomizedTag
 func tagAttribute(data []byte, offset int) (string, string, int) {
 	i := offset
 	var key string
-	if data[offset] == '"' {
+	if data[i] == '"' {
 		i++
 		for i < len(data) && data[i] != '"' {
 			i++
 		}
 		key = string(data[offset+1 : i])
 		i++
+	} else if !isalnum(data[i]) {
+		return "", "", i + 1
 	} else {
-		for i < len(data) && (isletter(data[i]) || isalnum(data[i])) {
+		for i < len(data) && isalnum(data[i]) {
 			i++
 		}
 		key = string(data[offset:i])
@@ -757,13 +757,13 @@ func tagAttribute(data []byte, offset int) (string, string, int) {
 		return key, string(data[bgn+2 : i]), i + 1
 	} else if data[bgn] == '=' {
 		i += 1
-		for i < len(data) && (isletter(data[i]) || isalnum(data[i])) {
+		for i < len(data) && isalnum(data[i]) {
 			i++
 		}
 		return key, string(data[bgn+1 : i]), i
 	}
 
-	return key, "", i - 1
+	return key, "", i
 }
 
 // '\\' backslash escape
