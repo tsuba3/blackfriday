@@ -71,8 +71,7 @@ type CustomizedTag struct {
 	// arguments
 	// - attributes map[string]string
 	// - arguments []string
-	// - child text or nil
-	Parse func(map[string]string, []string, []byte) CTagNode
+	Parse func(map[string]string, []string) CTagNode
 }
 
 type CTagNode struct {

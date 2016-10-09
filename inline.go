@@ -724,7 +724,7 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *CustomizedTag
 		// TODO
 		panic("Not implemented yet.")
 	} else {
-		result := tag.Parse(attributes, arguments, nil)
+		result := tag.Parse(attributes, arguments)
 		return i, &tag, result
 	}
 }

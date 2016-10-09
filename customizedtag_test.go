@@ -43,7 +43,7 @@ func sortMap(m map[string]string) []string {
 func TestCTagInline(t *testing.T) {
 	tag := map[string]CustomizedTag{}
 	tag["inline"] = CustomizedTag{
-		Parse:func(attr map[string]string, args []string, child []byte) CTagNode {
+		Parse:func(attr map[string]string, args []string) CTagNode {
 			var buff bytes.Buffer
 			buff.WriteString("Attributes:\n")
 			keys := sortMap(attr)
@@ -103,7 +103,7 @@ Arguments:
 func TestCTagInlineChild(t *testing.T) {
 	tag := map[string]CustomizedTag{}
 	tag["red"] = CustomizedTag{
-		Parse:func(attr map[string]string, args []string, child []byte) CTagNode {
+		Parse:func(attr map[string]string, args []string) CTagNode {
 			return CTagNode{
 				Before: []byte(`<span style="color:red;">`),
 				After: []byte(`</span>`),
