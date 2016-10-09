@@ -105,7 +105,7 @@ func TestCTagInlineChild(t *testing.T) {
 	input := `
 {red}This is **Red**.{/red}
 `
-	output := `<p><span style="color:red;">This is <em>Red</em>.</span></p>
+	output := `<p><span style="color:red;">This is <strong>Red</strong>.</span></p>
 `
 
 	testCTag(t, input, output, tag)
