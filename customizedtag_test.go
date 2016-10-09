@@ -27,6 +27,7 @@ func testCTag(t *testing.T, input string, expected string, cTag map[string]Custo
 			}
 		}
 		t.Log(buff.String())
+		t.Log(result)
 		t.Fail()
 	}
 }
