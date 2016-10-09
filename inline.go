@@ -15,6 +15,7 @@ package blackthunder
 
 import (
 	"bytes"
+	"errors"
 	"regexp"
 	"strconv"
 )
@@ -26,6 +27,24 @@ var (
 	// TODO: improve this regexp to catch all possible entities:
 	htmlEntityRe = regexp.MustCompile(`&[a-z]{2,5};`)
 )
+
+type parsedCTagType int
+
+const (
+	BEGIN parsedCTagType = iota + 1
+	TEXT
+	CLOSE
+	SINGLE
+)
+
+type parsedCTag struct {
+	end     int
+	kind    parsedCTagType
+	name    string
+	attr    map[string]string
+	args    []string
+	content []byte
+}
 
 // Functions to parse text within a block
 // Each function returns the number of chars taken care of
@@ -658,75 +677,210 @@ func leftAngle(p *parser, data []byte, offset int) (int, *Node) {
 
 // '{' customized tags
 func leftBrace(p *parser, data []byte, offset int) (int, *Node) {
-	end, tag, result := parseCustomizedTag(p, data, offset)
-
-	if tag == nil {
-		node := NewNode(Text)
-		node.Literal = result.Content
-		return end, node
-	}
-
-	var node *Node
-	if tag.IsBlock {
-		node = NewNode(CBlock)
-		node.cTag = result
-	} else {
-		node = NewNode(CSpan)
-		node.cTag = result
-	}
-	return end, node
+	i, pTag := parseCustomizedTag(p, data, offset)
+	stack := newCTagStack()
+	stack.push(p.cTag)
+	return i, parseCNode(p, 0, pTag, stack)
 }
 
-func parseCustomizedTag(p *parser, data []byte, offset int) (int, *CustomizedTag, CTagNode) {
-	data = data[offset:]
+func parseCNode(p *parser, i int, pTag []parsedCTag, stack *cTagStack) *Node {
+	switch pTag[i].kind {
+	case SINGLE:
+		tag := stack.get(pTag[i].name)
+		if tag != nil {
+			var n *Node
+			if tag.IsBlock {
+				n = NewNode(HTMLBlock)
+			} else {
+				n = NewNode(HTMLSpan)
+			}
+			if tag.Async {
+				p.wg.Add(1)
+				go func() {
+					n.Literal = tag.Parse(pTag[i].attr, pTag[i].args).Content
+					p.wg.Done()
+				}()
+			} else {
+				n.Literal = tag.Parse(pTag[i].attr, pTag[i].args).Content
+			}
+			return n
+		}
+	case BEGIN:
+		tag := stack.get(pTag[i].name)
+		if tag != nil {
+			var n *Node
+			if tag.IsBlock {
+				n = NewNode(HTMLBlock)
+			} else {
+				n = NewNode(HTMLSpan)
+			}
+			if tag.Async {
+				p.wg.Add(1)
+				go func() {
+					parseCBlock(p, i+1, pTag, stack, tag, n)
+					p.wg.Done()
+				}()
+			} else {
+				parseCBlock(p, i+1, pTag, stack, tag, n)
+			}
+			return n
+		}
+	}
+	node := NewNode(HTMLSpan)
+	node.Literal = []byte{}
+	return node
+}
 
-	i := 1
-	for i < len(data) && isalnum(data[i]) {
+func parseCBlock(p *parser, i int, pTag []parsedCTag, stack *cTagStack, tag *CustomizedTag, n *Node) {
+	ct := tag.Parse(pTag[i].attr, pTag[i].args)
+	before := NewNode(HTMLSpan)
+	after := NewNode(HTMLSpan)
+	before.Literal = ct.Before
+	after.Literal = ct.After
+	stack.push(ct.Child)
+	content := NewNode(CBlock)
+
+	for i < len(pTag) {
+		switch pTag[i].kind {
+		case TEXT:
+			n = NewNode(CBlock)
+			p.inline(n, pTag[i].content)
+			content.AppendChild(n)
+		case SINGLE:
+			content.AppendChild(parseCNode(p, i, pTag, stack))
+		case BEGIN:
+			content.AppendChild(parseCNode(p, i, pTag, stack))
+		case CLOSE:
+			break
+		}
 		i++
 	}
-	name := string(data[1:i])
-	tag, ok := p.cTag[name]
-	if !ok {
-		return i, nil, CTagNode{Content: data[0:i]}
+
+	n.AppendChild(before)
+	n.AppendChild(content)
+	n.AppendChild(after)
+}
+
+type cTagStack struct {
+	s []map[string]CustomizedTag
+}
+
+func newCTagStack() *cTagStack {
+	return &cTagStack{[]map[string]CustomizedTag{}}
+}
+
+func (s *cTagStack) push(e map[string]CustomizedTag) {
+	s.s = append(s.s, e)
+}
+
+func (s *cTagStack) pop() (map[string]CustomizedTag, error) {
+	l := len(s.s)
+	if l == 0 {
+		return nil, errors.New("Empty Stack")
 	}
 
-	attributes := map[string]string{}
-	arguments := make([]string, 0, 4)
-	hasChild := false
+	res := s.s[l-1]
+	s.s = s.s[:l-1]
+	return res, nil
+}
+
+func (s *cTagStack) get(name string) *CustomizedTag {
+	for i := len(s.s) - 1; i >= 0; i-- {
+		c, ok := s.s[i][name]
+		if ok {
+			return &c
+		}
+	}
+	return nil
+}
+
+func parseCustomizedTag(p *parser, data []byte, offset int) (int, []parsedCTag) {
+	data = data[offset:]
+	i := 0
+	r := make([]parsedCTag, 0, 8)
+	nest := 0
 	for i < len(data) {
-		if isspace(data[i]) {
+		tag := findCTag(p, data, i)
+		r = append(r, tag)
+		i = tag.end
+		switch tag.kind {
+		case BEGIN:
+			nest++
+		case CLOSE:
+			nest--
+		}
+		if nest <= 0 {
+			break
+		}
+	}
+	return i, r
+}
+
+func findCTag(p *parser, data []byte, i int) parsedCTag {
+	if i+1 >= len(data) {
+		return parsedCTag{end: len(data)}
+	}
+	if data[i] == '{' && data[i+1] == '/' {
+		i += 2
+		for i < len(data) && data[i] != '}' {
 			i++
-			continue
 		}
-		if data[i] == '}' {
-			i += 1
-			hasChild = true
-			break
-		}
-		if data[i] == '/' && data[i+1] == '}' {
-			i += 2
-			break
-		}
-
-		var key, value string
-		key, value, i = tagAttribute(data, i)
-		if value == "" {
-			arguments = append(arguments, key)
-		} else {
-			attributes[key] = value
-		}
-		//i++
+		return parsedCTag{end: i, kind: CLOSE}
 	}
 
-	// i points after '}'
+	if data[i] == '{' {
+		i++
+		bgn := i
+		for i < len(data) && isalnum(data[i]) {
+			i++
+		}
+		name := string(data[bgn:i])
 
-	if hasChild {
-		// TODO
-		panic("Not implemented yet.")
-	} else {
-		result := tag.Parse(attributes, arguments)
-		return i, &tag, result
+		attributes := map[string]string{}
+		arguments := make([]string, 0, 4)
+		hasChild := false
+		for i < len(data) {
+			if isspace(data[i]) {
+				i++
+				continue
+			}
+			if data[i] == '}' {
+				i += 1
+				hasChild = true
+				break
+			}
+			if data[i] == '/' && data[i+1] == '}' {
+				i += 2
+				break
+			}
+
+			var key, value string
+			key, value, i = tagAttribute(data, i)
+			if value == "" {
+				arguments = append(arguments, key)
+			} else {
+				attributes[key] = value
+			}
+		}
+		kind := SINGLE
+		if hasChild {
+			kind = BEGIN
+		}
+		return parsedCTag{
+			end:  i,
+			name: name,
+			attr: attributes,
+			args: arguments,
+			kind: kind,
+		}
 	}
+
+	bgn := i
+	for i < len(data) && data[i-1] != '\\' && data[i] != '{' {
+		i++
+	}
+	return parsedCTag{end: i, kind: TEXT, content: data[bgn:i]}
+
 }
 
 func tagAttribute(data []byte, offset int) (string, string, int) {
