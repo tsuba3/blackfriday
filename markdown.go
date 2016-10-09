@@ -66,7 +66,6 @@ var DefaultOptions = Options{
 
 type CustomizedTag struct {
 	IsBlock    bool // Block will not be wrapped <p>
-	ParseChild bool // Parse child
 	Async      bool // Run parse method async
 
 	// arguments
