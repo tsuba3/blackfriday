@@ -90,8 +90,6 @@ type CTagNode struct {
 type cTagStack struct {
 	tag   CustomizedTag
 	node  CTagNode
-	child map[string]CustomizedTag
-	value map[string]string
 }
 
 type stack struct {
