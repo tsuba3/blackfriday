@@ -46,6 +46,11 @@ type parsedCTag struct {
 	content []byte
 }
 
+type cNode struct {
+	next  *cNode
+	this  *parsedCTag
+}
+
 // Functions to parse text within a block
 // Each function returns the number of chars taken care of
 // data is the complete block being rendered
@@ -677,16 +682,16 @@ func leftAngle(p *parser, data []byte, offset int) (int, *Node) {
 
 // '{' customized tags
 func leftBrace(p *parser, data []byte, offset int) (int, *Node) {
-	i, pTag := parseCustomizedTag(p, data, offset)
+	i, cNode := parseCustomizedTag(p, data, offset)
 	stack := newCTagStack()
 	stack.push(p.cTag)
-	return i, parseCNode(p, 0, pTag, stack)
+	return i, parseCNode(p, cNode, stack)
 }
 
-func parseCNode(p *parser, i int, pTag []parsedCTag, stack *cTagStack) *Node {
-	switch pTag[i].kind {
+func parseCNode(p *parser, cNode *cNode, stack *cTagStack) *Node {
+	switch cNode.this.kind {
 	case SINGLE:
-		tag := stack.get(pTag[i].name)
+		tag := stack.get(cNode.this.name)
 		if tag != nil {
 			var n *Node
 			if tag.IsBlock {
@@ -697,16 +702,16 @@ func parseCNode(p *parser, i int, pTag []parsedCTag, stack *cTagStack) *Node {
 			if tag.Async {
 				p.wg.Add(1)
 				go func() {
-					n.Literal = tag.Parse(pTag[i].attr, pTag[i].args).Content
+					n.Literal = tag.Parse(cNode.this.attr, cNode.this.args).Content
 					p.wg.Done()
 				}()
 			} else {
-				n.Literal = tag.Parse(pTag[i].attr, pTag[i].args).Content
+				n.Literal = tag.Parse(cNode.this.attr, cNode.this.args).Content
 			}
 			return n
 		}
 	case BEGIN:
-		tag := stack.get(pTag[i].name)
+		tag := stack.get(cNode.this.name)
 		if tag != nil {
 			var n *Node
 			if tag.IsBlock {
@@ -717,11 +722,11 @@ func parseCNode(p *parser, i int, pTag []parsedCTag, stack *cTagStack) *Node {
 			if tag.Async {
 				p.wg.Add(1)
 				go func() {
-					parseCBlock(p, i+1, pTag, stack, tag, n)
+					parseCBlock(p, cNode, stack, tag, n)
 					p.wg.Done()
 				}()
 			} else {
-				parseCBlock(p, i+1, pTag, stack, tag, n)
+				parseCBlock(p, cNode, stack, tag, n)
 			}
 			return n
 		}
@@ -731,8 +736,8 @@ func parseCNode(p *parser, i int, pTag []parsedCTag, stack *cTagStack) *Node {
 	return node
 }
 
-func parseCBlock(p *parser, i int, pTag []parsedCTag, stack *cTagStack, tag *CustomizedTag, n *Node) {
-	ct := tag.Parse(pTag[i].attr, pTag[i].args)
+func parseCBlock(p *parser, cNode *cNode, stack *cTagStack, tag *CustomizedTag, n *Node) {
+	ct := tag.Parse(cNode.this.attr, cNode.this.args)
 	before := NewNode(HTMLSpan)
 	after := NewNode(HTMLSpan)
 	before.Literal = ct.Before
@@ -740,20 +745,24 @@ func parseCBlock(p *parser, i int, pTag []parsedCTag, stack *cTagStack, tag *Cus
 	stack.push(ct.Child)
 	content := NewNode(CBlock)
 
-	for i < len(pTag) {
-		switch pTag[i].kind {
+	c := cNode
+	for {
+		if c == nil {
+			break
+		}
+		switch c.this.kind {
 		case TEXT:
 			n = NewNode(CBlock)
-			p.inline(n, pTag[i].content)
+			p.inline(n, c.this.content)
 			content.AppendChild(n)
 		case SINGLE:
-			content.AppendChild(parseCNode(p, i, pTag, stack))
+			content.AppendChild(parseCNode(p, c, stack))
 		case BEGIN:
-			content.AppendChild(parseCNode(p, i, pTag, stack))
+			content.AppendChild(parseCNode(p, c, stack))
 		case CLOSE:
 			break
 		}
-		i++
+		c = c.next
 	}
 
 	n.AppendChild(before)
@@ -794,38 +803,57 @@ func (s *cTagStack) get(name string) *CustomizedTag {
 	return nil
 }
 
-func parseCustomizedTag(p *parser, data []byte, offset int) (int, []parsedCTag) {
+func parseCustomizedTag(p *parser, data []byte, offset int) (int, *cNode) {
 	data = data[offset:]
 	i := 0
-	r := make([]parsedCTag, 0, 8)
+	var currNode *cNode
+	stack := newStack()
 	nest := 0
 	for i < len(data) {
 		tag := findCTag(p, data, i)
-		r = append(r, tag)
 		i = tag.end
 		switch tag.kind {
 		case BEGIN:
+			n := &cNode{this: tag}
+			if currNode == nil {
+				currNode = n
+			} else {
+				currNode.next = n
+				currNode = nil
+			}
+			stack.Push(n)
 			nest++
 		case CLOSE:
-			nest--
+				currNode.next = &cNode{this: tag}
+				nest--
+		case TEXT:
+			fallthrough
+		case SINGLE:
+			n := &cNode{this: tag}
+			if currNode == nil {
+				currNode = n
+			} else {
+				currNode.next = n
+				currNode = n
+			}
 		}
 		if nest <= 0 {
 			break
 		}
 	}
-	return i, r
+	return i, currNode
 }
 
-func findCTag(p *parser, data []byte, i int) parsedCTag {
+func findCTag(p *parser, data []byte, i int) *parsedCTag {
 	if i+1 >= len(data) {
-		return parsedCTag{end: len(data)}
+		return &parsedCTag{end: len(data)}
 	}
 	if data[i] == '{' && data[i+1] == '/' {
 		i += 2
 		for i < len(data) && data[i] != '}' {
 			i++
 		}
-		return parsedCTag{end: i, kind: CLOSE}
+		return &parsedCTag{end: i, kind: CLOSE}
 	}
 
 	if data[i] == '{' {
@@ -866,7 +894,7 @@ func findCTag(p *parser, data []byte, i int) parsedCTag {
 		if hasChild {
 			kind = BEGIN
 		}
-		return parsedCTag{
+		return &parsedCTag{
 			end:  i,
 			name: name,
 			attr: attributes,
@@ -879,7 +907,7 @@ func findCTag(p *parser, data []byte, i int) parsedCTag {
 	for i < len(data) && data[i-1] != '\\' && data[i] != '{' {
 		i++
 	}
-	return parsedCTag{end: i, kind: TEXT, content: data[bgn:i]}
+	return &parsedCTag{end: i, kind: TEXT, content: data[bgn:i]}
 
 }
 

@@ -13,6 +13,7 @@ import (
 	"io"
 	"strings"
 	"unicode/utf8"
+	"errors"
 	"sync"
 )
 
@@ -85,7 +86,7 @@ type CTagNode struct {
 	// If ParseChild is false
 	Content []byte
 }
-/*
+
 type stack struct {
 	s []*cNode
 }
@@ -108,7 +109,7 @@ func (s *stack) Pop() (*cNode, error) {
 	s.s = s.s[:l - 1]
 	return res, nil
 }
-*/
+
 
 // ListType contains bitwise or'ed flags for list and list item objects.
 type ListType int
@@ -234,6 +235,7 @@ type parser struct {
 	allClosed            bool
 
 	cTag      map[string]CustomizedTag
+	cTagStack *stack
 
 	wg sync.WaitGroup
 }
@@ -438,6 +440,7 @@ func Parse(input []byte, opts Options, cTag map[string]CustomizedTag) *Node {
 	if cTag != nil {
 		p.cTag = cTag
 		p.inlineCallback['{'] = leftBrace
+		p.cTagStack = newStack()
 	}
 
 	if extensions&Autolink != 0 {
