@@ -110,6 +110,13 @@ func (s *stack) Pop() (*cNode, error) {
 	return res, nil
 }
 
+func (s *stack) Top() (*cNode, error) {
+	if len(s.s) == 0{
+		return nil, errors.New("Empty Stack")
+	}
+	return s.s[len(s.s) - 1], nil
+}
+
 
 // ListType contains bitwise or'ed flags for list and list item objects.
 type ListType int

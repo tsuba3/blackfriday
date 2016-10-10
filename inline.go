@@ -48,6 +48,7 @@ type parsedCTag struct {
 
 type cNode struct {
 	next  *cNode
+	child *cNode
 	this  *parsedCTag
 }
 
@@ -806,42 +807,50 @@ func (s *cTagStack) get(name string) *CustomizedTag {
 func parseCustomizedTag(p *parser, data []byte, offset int) (int, *cNode) {
 	data = data[offset:]
 	i := 0
-	var currNode *cNode
-	stack := newStack()
-	nest := 0
+	tag := findCTag(p, data, i)
+	i = tag.end
+	bgn := &cNode{this: tag} // first node
+	switch tag.kind {
+	case BEGIN:
+		return parseCTBlock(p, data, i)
+	case CLOSE:
+		return i, nil
+	case TEXT:
+		fallthrough
+	case SINGLE:
+		return i, bgn
+	default:
+		panic("Illegal parsedCTagType.")
+	}
+}
+
+// CLOSEまでをパースしてつなげて返す
+func parseCTBlock(p *parser, data []byte, i int) (int, *cNode) {
+	var bgn *cNode
+	var node *cNode
 	for i < len(data) {
 		tag := findCTag(p, data, i)
 		i = tag.end
+		var n *cNode
 		switch tag.kind {
 		case BEGIN:
-			n := &cNode{this: tag}
-			if currNode == nil {
-				currNode = n
-			} else {
-				currNode.next = n
-				currNode = nil
-			}
-			stack.Push(n)
-			nest++
-		case CLOSE:
-				currNode.next = &cNode{this: tag}
-				nest--
+			i, n = parseCTBlock(p, data, i)
 		case TEXT:
 			fallthrough
 		case SINGLE:
-			n := &cNode{this: tag}
-			if currNode == nil {
-				currNode = n
-			} else {
-				currNode.next = n
-				currNode = n
-			}
+			n = &cNode{this:tag}
+		case CLOSE:
+			return i, bgn
 		}
-		if nest <= 0 {
-			break
+		if bgn == nil {
+			bgn = n
+			node = n
+		} else {
+			node.next = n
+			node = n
 		}
 	}
-	return i, currNode
+	return i, bgn
 }
 
 func findCTag(p *parser, data []byte, i int) *parsedCTag {
