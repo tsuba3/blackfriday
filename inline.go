@@ -47,9 +47,8 @@ type parsedCTag struct {
 }
 
 type cNode struct {
-	next  *cNode
-	child *cNode
-	this  *parsedCTag
+	children []*cNode
+	this     *parsedCTag
 }
 
 // Functions to parse text within a block
@@ -689,6 +688,7 @@ func leftBrace(p *parser, data []byte, offset int) (int, *Node) {
 	return i, parseCNode(p, cNode, stack)
 }
 
+// 木構造をパース
 func parseCNode(p *parser, cNode *cNode, stack *cTagStack) *Node {
 	switch cNode.this.kind {
 	case SINGLE:
@@ -746,24 +746,18 @@ func parseCBlock(p *parser, cNode *cNode, stack *cTagStack, tag *CustomizedTag, 
 	stack.push(ct.Child)
 	content := NewNode(CBlock)
 
-	c := cNode
-	for {
-		if c == nil {
-			break
-		}
-		switch c.this.kind {
+	nodes := cNode.children
+	for i := 0; i < len(nodes); i++ {
+		switch nodes[i].this.kind {
 		case TEXT:
 			n = NewNode(CBlock)
-			p.inline(n, c.this.content)
+			p.inline(n, nodes[i].this.content)
 			content.AppendChild(n)
 		case SINGLE:
-			content.AppendChild(parseCNode(p, c, stack))
+			content.AppendChild(parseCNode(p, nodes[i], stack))
 		case BEGIN:
-			content.AppendChild(parseCNode(p, c, stack))
-		case CLOSE:
-			break
+			content.AppendChild(parseCNode(p, nodes[i], stack))
 		}
-		c = c.next
 	}
 
 	n.AppendChild(before)
@@ -804,51 +798,43 @@ func (s *cTagStack) get(name string) *CustomizedTag {
 	return nil
 }
 
+// Parse markdown to tree
 func parseCustomizedTag(p *parser, data []byte, offset int) (int, *cNode) {
 	data = data[offset:]
 	i := 0
 	tag := findCTag(p, data, i)
 	i = tag.end
-	var bgn *cNode = &cNode{this: tag} // first node
 	switch tag.kind {
 	case BEGIN:
 		end, child := parseCTBlock(p, data, i)
-		bgn.child = child
-		return end, bgn
+		return end, &cNode{this:tag, children:child}
 	case CLOSE:
 		return i, nil
 	case TEXT:
 		fallthrough
 	case SINGLE:
-		return i, bgn
+		return i, &cNode{this:tag}
 	default:
 		panic("Illegal parsedCTagType.")
 	}
 }
 
 // CLOSEまでをパースしてつなげて返す
-func parseCTBlock(p *parser, data []byte, i int) (int, *cNode) {
-	var bgn *cNode
-	var node *cNode
+func parseCTBlock(p *parser, data []byte, i int) (int, []*cNode) {
+	nodes := make([]*cNode, 0, 4)
 	for i < len(data) {
 		tag := findCTag(p, data, i)
 		i = tag.end
 		var n *cNode = &cNode{this:tag}
 		if tag.kind == BEGIN {
-			i, n.child = parseCTBlock(p, data, i)
+			i, n.children = parseCTBlock(p, data, i)
 		}
 		if tag.kind == CLOSE {
 			break
 		}
-		if bgn == nil {
-			bgn = n
-			node = n
-		} else {
-			node.next = n
-			node = n
-		}
+		nodes = append(nodes, n)
 	}
-	return i, bgn
+	return i, nodes
 }
 
 func findCTag(p *parser, data []byte, i int) *parsedCTag {
