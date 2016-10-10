@@ -809,10 +809,12 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *cNode) {
 	i := 0
 	tag := findCTag(p, data, i)
 	i = tag.end
-	bgn := &cNode{this: tag} // first node
+	var bgn *cNode = &cNode{this: tag} // first node
 	switch tag.kind {
 	case BEGIN:
-		return parseCTBlock(p, data, i)
+		end, child := parseCTBlock(p, data, i)
+		bgn.child = child
+		return end, bgn
 	case CLOSE:
 		return i, nil
 	case TEXT:
@@ -831,16 +833,12 @@ func parseCTBlock(p *parser, data []byte, i int) (int, *cNode) {
 	for i < len(data) {
 		tag := findCTag(p, data, i)
 		i = tag.end
-		var n *cNode
-		switch tag.kind {
-		case BEGIN:
-			i, n = parseCTBlock(p, data, i)
-		case TEXT:
-			fallthrough
-		case SINGLE:
-			n = &cNode{this:tag}
-		case CLOSE:
-			return i, bgn
+		var n *cNode = &cNode{this:tag}
+		if tag.kind == BEGIN {
+			i, n.child = parseCTBlock(p, data, i)
+		}
+		if tag.kind == CLOSE {
+			break
 		}
 		if bgn == nil {
 			bgn = n
