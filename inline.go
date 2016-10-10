@@ -694,32 +694,22 @@ func parseCNode(p *parser, cNode *cNode, stack *cTagStack) *Node {
 	case SINGLE:
 		tag := stack.get(cNode.this.name)
 		if tag != nil {
-			var n *Node
-			if tag.IsBlock {
-				n = NewNode(HTMLBlock)
-			} else {
-				n = NewNode(HTMLSpan)
-			}
+			n := NewNode(CSpan)
 			if tag.Async {
 				p.wg.Add(1)
 				go func() {
-					n.Literal = tag.Parse(cNode.this.attr, cNode.this.args).Content
+					n.cTag = tag.Parse(cNode.this.attr, cNode.this.args)
 					p.wg.Done()
 				}()
 			} else {
-				n.Literal = tag.Parse(cNode.this.attr, cNode.this.args).Content
+				n.cTag = tag.Parse(cNode.this.attr, cNode.this.args)
 			}
 			return n
 		}
 	case BEGIN:
 		tag := stack.get(cNode.this.name)
 		if tag != nil {
-			var n *Node
-			if tag.IsBlock {
-				n = NewNode(HTMLBlock)
-			} else {
-				n = NewNode(HTMLSpan)
-			}
+			n := NewNode(CBlock)
 			if tag.Async {
 				p.wg.Add(1)
 				go func() {
@@ -739,30 +729,20 @@ func parseCNode(p *parser, cNode *cNode, stack *cTagStack) *Node {
 
 func parseCBlock(p *parser, cNode *cNode, stack *cTagStack, tag *CustomizedTag, n *Node) {
 	ct := tag.Parse(cNode.this.attr, cNode.this.args)
-	before := NewNode(HTMLSpan)
-	after := NewNode(HTMLSpan)
-	before.Literal = ct.Before
-	after.Literal = ct.After
+	n.cTag = ct
 	stack.push(ct.Child)
-	content := NewNode(CBlock)
 
 	nodes := cNode.children
 	for i := 0; i < len(nodes); i++ {
 		switch nodes[i].this.kind {
 		case TEXT:
-			n = NewNode(CBlock)
 			p.inline(n, nodes[i].this.content)
-			content.AppendChild(n)
 		case SINGLE:
-			content.AppendChild(parseCNode(p, nodes[i], stack))
+			n.AppendChild(parseCNode(p, nodes[i], stack))
 		case BEGIN:
-			content.AppendChild(parseCNode(p, nodes[i], stack))
+			n.AppendChild(parseCNode(p, nodes[i], stack))
 		}
 	}
-
-	n.AppendChild(before)
-	n.AppendChild(content)
-	n.AppendChild(after)
 }
 
 type cTagStack struct {
@@ -846,6 +826,7 @@ func findCTag(p *parser, data []byte, i int) *parsedCTag {
 		for i < len(data) && data[i] != '}' {
 			i++
 		}
+		i++ // points after }
 		return &parsedCTag{end: i, kind: CLOSE}
 	}
 

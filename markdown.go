@@ -477,6 +477,7 @@ func Parse(input []byte, opts Options, cTag map[string]CustomizedTag) *Node {
 		return GoToNext
 	})
 	p.parseRefsToAST()
+	p.wg.Wait()
 	return p.doc
 }
 

@@ -712,6 +712,11 @@ func (r *HTMLRenderer) RenderNode(w io.Writer, node *Node, entering bool) WalkSt
 	case CSpan:
 		r.out(w, node.cTag.Content)
 	case CBlock:
+		if entering {
+			r.out(w, node.cTag.Before)
+		} else {
+			r.out(w, node.cTag.After)
+		}
 	default:
 		panic("Unknown node type " + node.Type.String())
 	}

@@ -236,6 +236,8 @@ func (n *Node) isContainer() bool {
 	case TableRow:
 		fallthrough
 	case TableCell:
+		fallthrough
+	case CBlock:
 		return true
 	default:
 		return false
