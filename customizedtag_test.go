@@ -7,7 +7,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-func testCTag(t *testing.T, input string, expected string, cTag map[string]CustomizedTag) {
+func testCTag(t *testing.T, input string, expected string, cTag map[string]CustomizedTag, msg string) {
 	result := string(MarkdownWithCustomizedTag([]byte(input), cTag))
 	if result != expected {
 		diff := diffmatchpatch.New().DiffMain(result, expected, false)
@@ -28,6 +28,7 @@ func testCTag(t *testing.T, input string, expected string, cTag map[string]Custo
 		}
 		t.Log(buff.String())
 		t.Log(result)
+		t.Log(msg)
 		t.Fail()
 	}
 }
@@ -107,7 +108,7 @@ Arguments:
 323232</p>
 `
 
-	testCTag(t, input, output, tag)
+	testCTag(t, input, output, tag, "")
 }
 
 func TestCTagInlineChild(t *testing.T) {
@@ -125,12 +126,92 @@ func TestCTagInlineChild(t *testing.T) {
 {red}This is **Red**{/red}.
 
 **123{red}456{/red}789**
+
+{red}{/red}
+
+Hello {red}Tanaka{/red}!
+
+A{red}B{red}CD{/red}E{red}{/red}E{red}F{red}G{/red}{/red}H{red}I{/red}J{/red}
+
 `
 	output := `<p><span style="color:red;">This is <strong>Red</strong></span>.</p>
 
 <p><strong>123<span style="color:red;">456</span>789</strong></p>
+
+<p><span style="color:red;"></span></p>
+
+<p>Hello <span style="color:red;">Tanaka</span>!</p>
+
+<p>A<span style="color:red;">B<span style="color:red;">CD</span>E<span style="color:red;">F<span style="color:red;">G</span></span>H<span style="color:red;">I</span>J</span></p>
 `
 
-	testCTag(t, input, output, tag)
+	testCTag(t, input, output, tag, "")
 }
 
+func TestCTagBlock(t *testing.T) {
+	tag := map[string]CustomizedTag{}
+	tag["div"] = CustomizedTag{
+		Parse:func(attr map[string]string, args []string) CTagNode {
+			return CTagNode{
+				Before: []byte(`<div>`),
+				After: []byte(`</div>`),
+				IsBlock: true,
+			}
+		},
+	}
+	tag["span"] = CustomizedTag{
+		Parse:func(attr map[string]string, args []string) CTagNode {
+			return CTagNode{
+				Before: []byte(`<span>`),
+				After: []byte(`</span>`),
+			}
+		},
+	}
+	tag["br"] = CustomizedTag{
+		Parse:func(attr map[string]string, args []string) CTagNode {
+			return CTagNode{
+				Content: []byte(`<br>`),
+			}
+		},
+	}
+
+	input1 := `
+{div}
+
+A
+
+**B**
+
+{span}SPAN{br/}{/span}
+
+{br/}
+
+{/div}
+
+`
+
+	output1 := `<div>
+
+A
+
+<strong>B</strong>
+<span>SPAN<br></span>
+<br>
+</div>`
+
+	testCTag(t, input1, output1, tag, "div")
+
+	input2 := `
+{div}{/div}
+
+{span}{/span}
+
+{br/}
+`
+
+	output2 := `<div></div><p><span></span></p>
+<p><br></p>
+`
+	testCTag(t, input2, output2, tag, "block")
+
+}

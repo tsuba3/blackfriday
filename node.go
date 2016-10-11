@@ -240,6 +240,8 @@ func (n *Node) isContainer() bool {
 	case TableCell:
 		fallthrough
 	case CParent:
+		fallthrough
+	case CPParent:
 		return true
 	default:
 		return false

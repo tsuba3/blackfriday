@@ -44,6 +44,9 @@ type parsedCTag struct {
 	attr    map[string]string
 	args    []string
 	content []byte
+
+	parseChildren bool
+	parseBlock    bool
 }
 
 type cNode struct {
@@ -793,19 +796,11 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *cNode) {
 	i := 0
 	tag := findCTag(p, data, i)
 	i = tag.end
-	switch tag.kind {
-	case BEGIN:
+	if tag.kind == BEGIN {
 		end, child := parseCTBlock(p, data, i)
 		return end, &cNode{this:tag, children:child}
-	case CLOSE:
-		return i, nil
-	case TEXT:
-		fallthrough
-	case SINGLE:
-		return i, &cNode{this:tag}
-	default:
-		panic("Illegal parsedCTagType.")
 	}
+	return i, &cNode{this:tag}
 }
 
 // Parse customized tags until CLOSE
