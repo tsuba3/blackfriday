@@ -743,6 +743,7 @@ func parseCBlock(p *parser, cNode *cNode, stack *cTagStack, tag *CustomizedTag, 
 			n.AppendChild(parseCNode(p, nodes[i], stack))
 		}
 	}
+	stack.pop()
 }
 
 type cTagStack struct {
