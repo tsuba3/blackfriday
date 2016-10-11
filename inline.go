@@ -695,7 +695,7 @@ func parseCNode(p *parser, cNode *cNode, stack *cTagStack) *Node {
 	case SINGLE:
 		tag := stack.get(cNode.this.name)
 		if tag != nil {
-			n := NewNode(CSpan)
+			n := NewNode(CSingle)
 			if tag.Async {
 				p.wg.Add(1)
 				go func() {
@@ -710,7 +710,7 @@ func parseCNode(p *parser, cNode *cNode, stack *cTagStack) *Node {
 	case BEGIN:
 		tag := stack.get(cNode.this.name)
 		if tag != nil {
-			n := NewNode(CBlock)
+			n := NewNode(CParent)
 			if tag.Async {
 				p.wg.Add(1)
 				go func() {

@@ -66,7 +66,6 @@ var DefaultOptions = Options{
 }
 
 type CustomizedTag struct {
-	IsBlock    bool // Block will not be wrapped <p>
 	Async      bool // Run parse method async
 
 	// arguments
@@ -76,6 +75,8 @@ type CustomizedTag struct {
 }
 
 type CTagNode struct {
+	IsBlock bool // Block will not be wrapped by <p>
+
 	Child map[string]CustomizedTag // Tags available in child
 	Value map[string]string        // Values available in child
 

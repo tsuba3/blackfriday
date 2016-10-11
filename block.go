@@ -71,6 +71,17 @@ func (p *parser) block(data []byte) {
 			}
 		}
 
+		// block of customized tag
+		//
+		// {tag}
+		//     ...
+		// {/tag}
+		if data[0] == '{' {
+			i := p.cBlock(data)
+			data = data[i:]
+			continue
+		}
+
 		// title block
 		//
 		// % stuff
@@ -207,6 +218,23 @@ func (p *parser) addBlock(typ NodeType, content []byte) *Node {
 	container := p.addChild(typ, 0)
 	container.content = content
 	return container
+}
+
+func (p *parser) cBlock(data []byte) int {
+	i, node := leftBrace(p, data, 0)
+	// if paragraph end
+	if i + 1 < len(data) && data[i] == '\n' && data[i + 1] == '\n' {
+		switch node.Type {
+		case CSingle:
+			node.Type = CPSingle
+		case CParent:
+			node.Type = CPParent
+		}
+		p.addExistingChild(node, 0)
+		return i
+	} else {
+		return p.paragraph(data)
+	}
 }
 
 func (p *parser) isPrefixHeader(data []byte) bool {

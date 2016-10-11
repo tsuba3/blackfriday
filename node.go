@@ -36,8 +36,10 @@ const (
 	TableHead
 	TableBody
 	TableRow
-	CSpan
-	CBlock
+	CSingle
+	CParent
+	CPSingle
+	CPParent
 )
 
 var nodeTypeNames = []string{
@@ -237,7 +239,7 @@ func (n *Node) isContainer() bool {
 		fallthrough
 	case TableCell:
 		fallthrough
-	case CBlock:
+	case CParent:
 		return true
 	default:
 		return false

@@ -515,28 +515,7 @@ func (r *HTMLRenderer) RenderNode(w io.Writer, node *Node, entering bool) WalkSt
 	case Document:
 		break
 	case Paragraph:
-		if skipParagraphTags(node) {
-			break
-		}
-		if entering {
-			// TODO: untangle this clusterfuck about when the newlines need
-			// to be added and when not.
-			if node.Prev != nil {
-				switch node.Prev.Type {
-				case HTMLBlock, List, Paragraph, Header, CodeBlock, BlockQuote, HorizontalRule:
-					r.cr(w)
-				}
-			}
-			if node.Parent.Type == BlockQuote && node.Prev == nil {
-				r.cr(w)
-			}
-			r.out(w, tag("p", attrs, false))
-		} else {
-			r.out(w, tag("/p", attrs, false))
-			if !(node.Parent.Type == Item && node.Next == nil) {
-				r.cr(w)
-			}
-		}
+		r.writeParagraph(w, node, entering)
 	case BlockQuote:
 		if entering {
 			r.cr(w)
@@ -709,13 +688,33 @@ func (r *HTMLRenderer) RenderNode(w io.Writer, node *Node, entering bool) WalkSt
 			r.out(w, tag("/tr", nil, false))
 			r.cr(w)
 		}
-	case CSpan:
+	case CSingle:
 		r.out(w, node.cTag.Content)
-	case CBlock:
+	case CParent:
 		if entering {
 			r.out(w, node.cTag.Before)
 		} else {
 			r.out(w, node.cTag.After)
+		}
+	case CPSingle:
+		if !node.cTag.IsBlock {
+			r.writeParagraph(w, node, true)
+			r.out(w, node.cTag.Content)
+			r.writeParagraph(w, node, false)
+		} else {
+			r.out(w, node.cTag.Content)
+		}
+	case CPParent:
+		if entering {
+			if !node.cTag.IsBlock {
+				r.writeParagraph(w, node, entering)
+			}
+			r.out(w, node.cTag.Before)
+		} else {
+			r.out(w, node.cTag.After)
+			if !node.cTag.IsBlock {
+				r.writeParagraph(w, node, entering)
+			}
 		}
 	default:
 		panic("Unknown node type " + node.Type.String())
@@ -829,6 +828,32 @@ func (r *HTMLRenderer) writeDocumentFooter(w *bytes.Buffer) {
 		return
 	}
 	w.WriteString("\n</body>\n</html>\n")
+}
+
+func (r *HTMLRenderer) writeParagraph(w io.Writer, node *Node, entering bool) {
+	if skipParagraphTags(node) {
+		return
+	}
+	if entering {
+		// TODO: untangle this clusterfuck about when the newlines need
+		// to be added and when not.
+		if node.Prev != nil {
+			switch node.Prev.Type {
+			case HTMLBlock, List, Paragraph, Header, CodeBlock, BlockQuote, HorizontalRule:
+				r.cr(w)
+			}
+		}
+		if node.Parent.Type == BlockQuote && node.Prev == nil {
+			r.cr(w)
+		}
+		r.out(w, tag("p", nil, false))
+	} else {
+		r.out(w, tag("/p", nil, false))
+		if !(node.Parent.Type == Item && node.Next == nil) {
+			r.cr(w)
+		}
+	}
+
 }
 
 // Render walks the specified syntax (sub)tree and returns a HTML document.
