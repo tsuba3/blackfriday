@@ -131,7 +131,7 @@ func TestCTagInlineChild(t *testing.T) {
 
 Hello {red}Tanaka{/red}!
 
-A{red}B{red}CD{/red}E{red}{/red}E{red}F{red}G{/red}{/red}H{red}I{/red}J{/red}
+A{red}B{red}CD{/red}E{red}{/red}{red}F{red}G{/red}{/red}H{red}I{/red}J{/red}
 
 `
 	output := `<p><span style="color:red;">This is <strong>Red</strong></span>.</p>
@@ -139,10 +139,9 @@ A{red}B{red}CD{/red}E{red}{/red}E{red}F{red}G{/red}{/red}H{red}I{/red}J{/red}
 <p><strong>123<span style="color:red;">456</span>789</strong></p>
 
 <p><span style="color:red;"></span></p>
-
 <p>Hello <span style="color:red;">Tanaka</span>!</p>
 
-<p>A<span style="color:red;">B<span style="color:red;">CD</span>E<span style="color:red;">F<span style="color:red;">G</span></span>H<span style="color:red;">I</span>J</span></p>
+<p>A<span style="color:red;">B<span style="color:red;">CD</span>E<span style="color:red;"></span><span style="color:red;">F<span style="color:red;">G</span></span>H<span style="color:red;">I</span>J</span></p>
 `
 
 	testCTag(t, input, output, tag, "")
