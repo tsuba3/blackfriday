@@ -688,7 +688,8 @@ func leftBrace(p *parser, data []byte, offset int) (int, *Node) {
 	return i, parseCNode(p, cNode, stack)
 }
 
-// 木構造をパース
+// Parse cNode to Node.
+// The type of cNode must be SINGLE or BEGIN which has children.
 func parseCNode(p *parser, cNode *cNode, stack *cTagStack) *Node {
 	switch cNode.this.kind {
 	case SINGLE:
@@ -727,6 +728,8 @@ func parseCNode(p *parser, cNode *cNode, stack *cTagStack) *Node {
 	return node
 }
 
+// Parse children of cNode.
+// cNode must have children.
 func parseCBlock(p *parser, cNode *cNode, stack *cTagStack, tag *CustomizedTag, n *Node) {
 	ct := tag.Parse(cNode.this.attr, cNode.this.args)
 	n.cTag = ct
@@ -779,7 +782,12 @@ func (s *cTagStack) get(name string) *CustomizedTag {
 	return nil
 }
 
-// Parse markdown to tree
+// Parse a customized tag to tree.
+// e.g. {big color=red}THIS IS **RED**{icon A/} TEXT!{/big}
+//   => BEGIN (big color=red)
+//        L TEXT   (THIS IS **RED**)
+//        L SINGLE (icon A)
+//        L TEXT   ( TEXT!!)
 func parseCustomizedTag(p *parser, data []byte, offset int) (int, *cNode) {
 	data = data[offset:]
 	i := 0
@@ -800,7 +808,7 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *cNode) {
 	}
 }
 
-// CLOSEまでをパースしてつなげて返す
+// Parse customized tags until CLOSE
 func parseCTBlock(p *parser, data []byte, i int) (int, []*cNode) {
 	nodes := make([]*cNode, 0, 4)
 	for i < len(data) {
@@ -818,6 +826,7 @@ func parseCTBlock(p *parser, data []byte, i int) (int, []*cNode) {
 	return i, nodes
 }
 
+// Parse a single customized tag.
 func findCTag(p *parser, data []byte, i int) *parsedCTag {
 	if i+1 >= len(data) {
 		return &parsedCTag{end: len(data)}
@@ -886,6 +895,8 @@ func findCTag(p *parser, data []byte, i int) *parsedCTag {
 
 }
 
+// Parse an attribute.
+// Return key, value, end of data
 func tagAttribute(data []byte, offset int) (string, string, int) {
 	i := offset
 	var key string
