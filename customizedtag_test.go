@@ -216,6 +216,58 @@ A
 
 }
 
+func TestCTagChild(t *testing.T) {
+	tag := map[string]CustomizedTag{}
+	tag["block"] = CustomizedTag{
+		Parse: func(attr map[string]string, args []string) CTagNode {
+			return CTagNode{
+				Before: []byte("<div>"),
+				After:[]byte("</div>"),
+				IsBlock:true,
+				Child:map[string]CustomizedTag{
+					"name": {
+						Parse: func(attr map[string]string, args []string) CTagNode {
+							return CTagNode{Content: []byte("Takeshi")}
+						},
+					},
+					"age": {
+						Parse: func(attr map[string]string, args []string) CTagNode {
+							return CTagNode{Content: []byte("42")}
+						},
+					},
+				},
+			}
+		},
+	}
+	tag["name"] = CustomizedTag{
+		Parse: func(attr map[string]string, args []string) CTagNode {
+			return CTagNode{Content:[]byte("NAME")}
+		},
+	}
+
+	input := `
+{block}
+	Name {name/}
+	Age **{age/}**
+{/block}
+
+{name /}
+{age /}
+**{name /}**
+
+`
+
+	output := `<div>
+    Name Takeshi
+    Age **42**</div><p>NAME
+
+<strong>NAME</strong></p>
+`
+
+	testCTag(t, input, output, tag, "child")
+
+}
+
 // should not panic.
 func TestCTagError(t *testing.T) {
 	tag := map[string]CustomizedTag{}
