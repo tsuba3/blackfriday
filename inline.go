@@ -798,9 +798,9 @@ func parseCustomizedTag(p *parser, data []byte, offset int) (int, *cNode) {
 	i = tag.end
 	if tag.kind == BEGIN {
 		end, child := parseCTBlock(p, data, i)
-		return end, &cNode{this:tag, children:child}
+		return end, &cNode{this: tag, children: child}
 	}
-	return i, &cNode{this:tag}
+	return i, &cNode{this: tag}
 }
 
 // Parse customized tags until CLOSE
@@ -809,7 +809,7 @@ func parseCTBlock(p *parser, data []byte, i int) (int, []*cNode) {
 	for i < len(data) {
 		tag := findCTag(p, data, i)
 		i = tag.end
-		var n *cNode = &cNode{this:tag}
+		var n *cNode = &cNode{this: tag}
 		if tag.kind == BEGIN {
 			i, n.children = parseCTBlock(p, data, i)
 		}
@@ -856,7 +856,7 @@ func findCTag(p *parser, data []byte, i int) *parsedCTag {
 				hasChild = true
 				break
 			}
-			if data[i] == '/' && i + 1 < len(data) && data[i+1] == '}' {
+			if data[i] == '/' && i+1 < len(data) && data[i+1] == '}' {
 				i += 2
 				break
 			}
@@ -912,7 +912,7 @@ func tagAttribute(data []byte, offset int) (string, string, int) {
 	}
 
 	bgn := i
-	if bgn + 1 >= len(data) {
+	if bgn+1 >= len(data) {
 		return key, "", i
 	}
 	if data[bgn] == '=' && data[bgn+1] == '"' {

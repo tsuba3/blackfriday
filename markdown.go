@@ -9,12 +9,12 @@ package blackthunder
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
-	"unicode/utf8"
-	"errors"
 	"sync"
+	"unicode/utf8"
 )
 
 //
@@ -66,7 +66,7 @@ var DefaultOptions = Options{
 }
 
 type CustomizedTag struct {
-	Async      bool // Run parse method async
+	Async bool // Run parse method async
 
 	// arguments
 	// - attributes map[string]string
@@ -93,7 +93,7 @@ type stack struct {
 }
 
 func newStack() *stack {
-	return &stack{make([]*cNode, 0), }
+	return &stack{make([]*cNode, 0)}
 }
 
 func (s *stack) Push(v *cNode) {
@@ -106,18 +106,17 @@ func (s *stack) Pop() (*cNode, error) {
 		return nil, errors.New("Empty Stack")
 	}
 
-	res := s.s[l - 1]
-	s.s = s.s[:l - 1]
+	res := s.s[l-1]
+	s.s = s.s[:l-1]
 	return res, nil
 }
 
 func (s *stack) Top() (*cNode, error) {
-	if len(s.s) == 0{
+	if len(s.s) == 0 {
 		return nil, errors.New("Empty Stack")
 	}
-	return s.s[len(s.s) - 1], nil
+	return s.s[len(s.s)-1], nil
 }
-
 
 // ListType contains bitwise or'ed flags for list and list item objects.
 type ListType int

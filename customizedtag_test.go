@@ -1,11 +1,11 @@
 package blackthunder
 
 import (
-	"testing"
 	"bytes"
-	"sort"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"runtime/debug"
+	"sort"
+	"testing"
 )
 
 func testCTag(t *testing.T, input string, expected string, cTag map[string]CustomizedTag, msg string) {
@@ -46,7 +46,7 @@ func sortMap(m map[string]string) []string {
 func TestCTagInline(t *testing.T) {
 	tag := map[string]CustomizedTag{}
 	tag["inline"] = CustomizedTag{
-		Parse:func(attr map[string]string, args []string) CTagNode {
+		Parse: func(attr map[string]string, args []string) CTagNode {
 			var buff bytes.Buffer
 			buff.WriteString("Attributes:\n")
 			keys := sortMap(attr)
@@ -115,10 +115,10 @@ Arguments:
 func TestCTagInlineChild(t *testing.T) {
 	tag := map[string]CustomizedTag{}
 	tag["red"] = CustomizedTag{
-		Parse:func(attr map[string]string, args []string) CTagNode {
+		Parse: func(attr map[string]string, args []string) CTagNode {
 			return CTagNode{
 				Before: []byte(`<span style="color:red;">`),
-				After: []byte(`</span>`),
+				After:  []byte(`</span>`),
 			}
 		},
 	}
@@ -151,24 +151,24 @@ A{red}B{red}CD{/red}E{red}{/red}{red}F{red}G{/red}{/red}H{red}I{/red}J{/red}
 func TestCTagBlock(t *testing.T) {
 	tag := map[string]CustomizedTag{}
 	tag["div"] = CustomizedTag{
-		Parse:func(attr map[string]string, args []string) CTagNode {
+		Parse: func(attr map[string]string, args []string) CTagNode {
 			return CTagNode{
-				Before: []byte(`<div>`),
-				After: []byte(`</div>`),
+				Before:  []byte(`<div>`),
+				After:   []byte(`</div>`),
 				IsBlock: true,
 			}
 		},
 	}
 	tag["span"] = CustomizedTag{
-		Parse:func(attr map[string]string, args []string) CTagNode {
+		Parse: func(attr map[string]string, args []string) CTagNode {
 			return CTagNode{
 				Before: []byte(`<span>`),
-				After: []byte(`</span>`),
+				After:  []byte(`</span>`),
 			}
 		},
 	}
 	tag["br"] = CustomizedTag{
-		Parse:func(attr map[string]string, args []string) CTagNode {
+		Parse: func(attr map[string]string, args []string) CTagNode {
 			return CTagNode{
 				Content: []byte(`<br>`),
 			}
@@ -220,17 +220,17 @@ A
 func TestCTagError(t *testing.T) {
 	tag := map[string]CustomizedTag{}
 	tag["a"] = CustomizedTag{
-		Parse:func(attr map[string]string, args []string) CTagNode {
+		Parse: func(attr map[string]string, args []string) CTagNode {
 			return CTagNode{}
 		},
 	}
 	tag["b"] = CustomizedTag{
-		Parse:func(attr map[string]string, args []string) CTagNode {
-			return CTagNode{IsBlock:true}
+		Parse: func(attr map[string]string, args []string) CTagNode {
+			return CTagNode{IsBlock: true}
 		},
 	}
 
-	inputs := []string {
+	inputs := []string{
 		"{",
 		"{/",
 		"{\n",
@@ -255,7 +255,7 @@ func TestCTagError(t *testing.T) {
 	}
 
 	i := 0
-	defer func (){
+	defer func() {
 		e := recover()
 		if e != nil {
 			t.Log(e)
@@ -264,7 +264,7 @@ func TestCTagError(t *testing.T) {
 			t.Fail()
 		}
 	}()
-	for ;i < len(inputs); i++ {
+	for ; i < len(inputs); i++ {
 		MarkdownWithCustomizedTag([]byte(inputs[i]), tag)
 	}
 

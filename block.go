@@ -223,7 +223,7 @@ func (p *parser) addBlock(typ NodeType, content []byte) *Node {
 func (p *parser) cBlock(data []byte) int {
 	i, node := leftBrace(p, data, 0)
 	// if paragraph end
-	if i + 1 < len(data) && data[i] == '\n' && data[i + 1] == '\n' {
+	if i+1 < len(data) && data[i] == '\n' && data[i+1] == '\n' {
 		switch node.Type {
 		case CSingle:
 			node.Type = CPSingle
