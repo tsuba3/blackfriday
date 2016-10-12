@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"sort"
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"runtime/debug"
 )
 
 func testCTag(t *testing.T, input string, expected string, cTag map[string]CustomizedTag, msg string) {
@@ -212,5 +213,59 @@ A
 <p><br></p>
 `
 	testCTag(t, input2, output2, tag, "block")
+
+}
+
+// should not panic.
+func TestCTagError(t *testing.T) {
+	tag := map[string]CustomizedTag{}
+	tag["a"] = CustomizedTag{
+		Parse:func(attr map[string]string, args []string) CTagNode {
+			return CTagNode{}
+		},
+	}
+	tag["b"] = CustomizedTag{
+		Parse:func(attr map[string]string, args []string) CTagNode {
+			return CTagNode{IsBlock:true}
+		},
+	}
+
+	inputs := []string {
+		"{",
+		"{/",
+		"{\n",
+		"{/\n",
+		"a{\n",
+		"{a",
+		"{a\n",
+		"{a}AAA\n\n",
+		"*AA{*\n",
+		"{}{}\n",
+		"{{a}}\n",
+		"{L}{/L}",
+		"{a}{/a}",
+		"{a}{/}{/}\n\n",
+		"{/a}\n",
+		"A{/a}\n",
+		"{a/}",
+		"{a=",
+		"{a b/}",
+		"{a v=",
+		"{a/",
+	}
+
+	i := 0
+	defer func (){
+		e := recover()
+		if e != nil {
+			t.Log(e)
+			t.Log(inputs[i])
+			debug.PrintStack()
+			t.Fail()
+		}
+	}()
+	for ;i < len(inputs); i++ {
+		MarkdownWithCustomizedTag([]byte(inputs[i]), tag)
+	}
 
 }
