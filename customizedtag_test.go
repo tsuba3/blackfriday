@@ -5,7 +5,9 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func testCTag(t *testing.T, input string, expected string, cTag map[string]CustomizedTag, msg string) {
@@ -288,6 +290,51 @@ func TestCTagChild(t *testing.T) {
 
 	testCTag(t, input, output, tag, "child")
 
+}
+
+func TestCTagAsync(t *testing.T) {
+	tag := map[string]CustomizedTag{}
+	tag["async"] = CustomizedTag{
+		Async: true,
+		Parse: func(attr map[string]string, args []string) CTagNode {
+			if len(args) < 1 {
+				return CTagNode{}
+			}
+			d, _ := strconv.Atoi(args[0])
+			time.Sleep(time.Duration(d) * time.Millisecond)
+			return CTagNode{
+				Before:  []byte{'<'},
+				After:   []byte{'>'},
+				Content: []byte(args[0]),
+			}
+		},
+	}
+
+	input := `
+{async 500}
+**Hello**
+{async 500/}
+{/async}
+
+{async 100/}
+
+{async 200}
+**Hello**
+{async 800/}
+{async/}
+
+{async 1000/}
+`
+	output := `<p><
+<strong>Hello</strong>500></p>
+<p>100</p>
+<p><
+<strong>Hello</strong>800></p>
+
+<p>1000</p>
+`
+
+	testCTag(t, input, output, tag, "child")
 }
 
 // should not panic.
