@@ -856,7 +856,7 @@ func findCTag(p *parser, data []byte, i int) *parsedCTag {
 				hasChild = true
 				break
 			}
-			if data[i] == '/' && data[i+1] == '}' {
+			if data[i] == '/' && i + 1 < len(data) && data[i+1] == '}' {
 				i += 2
 				break
 			}
@@ -912,6 +912,9 @@ func tagAttribute(data []byte, offset int) (string, string, int) {
 	}
 
 	bgn := i
+	if bgn + 1 >= len(data) {
+		return key, "", i
+	}
 	if data[bgn] == '=' && data[bgn+1] == '"' {
 		i += 2
 		for i < len(data) && data[i] != '"' {
