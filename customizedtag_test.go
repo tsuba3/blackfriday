@@ -221,10 +221,10 @@ func TestCTagChild(t *testing.T) {
 	tag["block"] = CustomizedTag{
 		Parse: func(attr map[string]string, args []string) CTagNode {
 			return CTagNode{
-				Before: []byte("<div>"),
-				After:[]byte("</div>"),
-				IsBlock:true,
-				Child:map[string]CustomizedTag{
+				Before:  []byte("<div>"),
+				After:   []byte("</div>"),
+				IsBlock: true,
+				Child: map[string]CustomizedTag{
 					"name": {
 						Parse: func(attr map[string]string, args []string) CTagNode {
 							return CTagNode{Content: []byte("Takeshi")}
@@ -241,7 +241,7 @@ func TestCTagChild(t *testing.T) {
 	}
 	tag["name"] = CustomizedTag{
 		Parse: func(attr map[string]string, args []string) CTagNode {
-			return CTagNode{Content:[]byte("NAME")}
+			return CTagNode{Content: []byte("NAME")}
 		},
 	}
 

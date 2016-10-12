@@ -78,7 +78,6 @@ type CTagNode struct {
 	IsBlock bool // Block will not be wrapped by <p>
 
 	Child map[string]CustomizedTag // Tags available in child
-	Value map[string]string        // Values available in child
 
 	// If ParseChild is true
 	Before []byte // before children
