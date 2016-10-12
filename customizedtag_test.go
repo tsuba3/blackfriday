@@ -78,6 +78,12 @@ func TestCTagInline(t *testing.T) {
 
 191919{inline 49494949 /}323232
 
+{inline 4989/}
+
+{inline A B C/}
+
+{inline A   b/}
+
 `
 	output := `<p>Attributes:
 a : a
@@ -107,6 +113,22 @@ Arguments:
 Arguments:
 49494949
 323232</p>
+
+<p>Attributes:
+Arguments:
+4989
+</p>
+<p>Attributes:
+Arguments:
+A
+B
+C
+</p>
+<p>Attributes:
+Arguments:
+A
+b
+</p>
 `
 
 	testCTag(t, input, output, tag, "")
