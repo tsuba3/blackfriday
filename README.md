@@ -19,7 +19,7 @@ It started as a translation from C of [Sundown][3].
 Installation
 ------------
 
-    go get https://github.com/tsuba3/blackthunder
+    go get github.com/tsuba3/blackthunder
 
 Usage
 -----
