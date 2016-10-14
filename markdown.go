@@ -443,7 +443,7 @@ func Parse(input []byte, opts Options, cTag map[string]CustomizedTag) *Node {
 	p.inlineCallback['!'] = maybeImage
 	p.inlineCallback['^'] = maybeInlineFootnote
 
-	if cTag != nil {
+	if len(cTag) != 0 {
 		p.cTag = cTag
 		p.inlineCallback['{'] = leftBrace
 		p.cTagStack = newStack()

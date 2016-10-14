@@ -76,7 +76,7 @@ func (p *parser) block(data []byte) {
 		// {tag}
 		//     ...
 		// {/tag}
-		if data[0] == '{' {
+		if len(p.cTag) != 0 && data[0] == '{' {
 			i := p.cBlock(data)
 			data = data[i:]
 			continue
